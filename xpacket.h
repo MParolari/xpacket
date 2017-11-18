@@ -30,7 +30,6 @@
  * \todo Signed type marshalling.
  * \todo Graceful error handling.
  * \todo Enable/disable inline attribute.
- * \todo Unused variables declaration in functions.
  * \bug Received string length.
  *
  *    XPacket is an utility that generates a C struct and two functions
@@ -202,8 +201,32 @@ uint16_t xpacket_deserialize(const uint8_t*, struct XPACKET_NAME*);
 uint16_t
 xpacket_serialize(uint8_t* _pl, const struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
+  /* other variables declaration (if needed) */
+  #define FIELD_VAR(type, name)             DECL_OFFSET ||
+  #define FIELD_ARRAY(type, name, dim)      DECL_OFFSET || DECL_IT ||
+  #define FIELD_PTR_VAR(type, name)         DECL_OFFSET ||
+  #define FIELD_PTR_ARRAY(type, name, dim)  DECL_OFFSET || DECL_IT ||
+  #define FIELD_STRING_STD(name, dim)       DECL_IT ||
+  #define FIELD_STRING_PTR(name)            DECL_IT ||
+  /* offset variable */
+  #define DECL_OFFSET 1
+  #if (XPACKET_STRUCT 0)
   int8_t offset = 0; /* offset for bit shifting */
+  #endif
+  #undef DECL_OFFSET
+  /* iterator variable */
+  #define DECL_IT 1
+  #if (XPACKET_STRUCT 0)
   uint16_t it = 0; /* index for array iteration */
+  #endif
+  #undef DECL_IT
+  /* undefine various macros */
+  #undef FIELD_VAR
+  #undef FIELD_ARRAY
+  #undef FIELD_PTR_VAR
+  #undef FIELD_PTR_ARRAY
+  #undef FIELD_STRING_STD
+  #undef FIELD_STRING_PTR
   /* FIELD_VAR serialization definition */
   #define FIELD_VAR(type, name) \
     for (offset = (int8_t)sizeof(type) * 8 - 8; offset >= 0; offset -= 8) \
@@ -248,8 +271,32 @@ xpacket_serialize(uint8_t* _pl, const struct XPACKET_NAME* _data) {
 uint16_t
 xpacket_deserialize(const uint8_t* _pl, struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
+  /* other variables declaration (if needed) */
+  #define FIELD_VAR(type, name)             DECL_OFFSET ||
+  #define FIELD_ARRAY(type, name, dim)      DECL_OFFSET || DECL_IT ||
+  #define FIELD_PTR_VAR(type, name)         DECL_OFFSET ||
+  #define FIELD_PTR_ARRAY(type, name, dim)  DECL_OFFSET || DECL_IT ||
+  #define FIELD_STRING_STD(name, dim)       DECL_IT ||
+  #define FIELD_STRING_PTR(name)            DECL_IT ||
+  /* offset variable */
+  #define DECL_OFFSET 1
+  #if (XPACKET_STRUCT 0)
   int8_t offset = 0; /* offset for bit shifting */
+  #endif
+  #undef DECL_OFFSET
+  /* iterator variable */
+  #define DECL_IT 1
+  #if (XPACKET_STRUCT 0)
   uint16_t it = 0; /* index for array iteration */
+  #endif
+  #undef DECL_IT
+  /* undefine various macros */
+  #undef FIELD_VAR
+  #undef FIELD_ARRAY
+  #undef FIELD_PTR_VAR
+  #undef FIELD_PTR_ARRAY
+  #undef FIELD_STRING_STD
+  #undef FIELD_STRING_PTR
   /* FIELD_VAR deserialization definition */
   #define FIELD_VAR(type, name) \
     _data->name = 0; /* set value to zero for next bitwise OR operations */ \
