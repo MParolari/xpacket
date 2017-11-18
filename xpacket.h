@@ -30,6 +30,7 @@
  * \todo Signed type marshalling.
  * \todo Graceful error handling.
  * \todo Enable/disable inline attribute.
+ * \todo Unused variables declaration in functions.
  * \bug Received string length.
  *
  *    XPacket is an utility that generates a C struct and two functions
@@ -198,30 +199,32 @@ uint16_t xpacket_deserialize(const uint8_t*, struct XPACKET_NAME*);
  * \param _data  Pointer to the structure that will be serialized.
  * \return       Number of bytes serialized.
  */
-inline uint16_t
+uint16_t
 xpacket_serialize(uint8_t* _pl, const struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
+  int8_t offset = 0; /* offset for bit shifting */
+  uint16_t it = 0; /* index for array iteration */
   /* FIELD_VAR serialization definition */
   #define FIELD_VAR(type, name) \
-    for (int8_t offset = (int8_t)sizeof(type) - 8; offset >= 0; offset -= 8) \
+    for (offset = (int8_t)sizeof(type) * 8 - 8; offset >= 0; offset -= 8) \
       _pl[idx++] = _data->name >> offset;
   /* "convert" FIELD_ARRAY in a FIELD_VAR macro, iterating over the array */
   #define FIELD_ARRAY(type, name, dim) \
-    for (uint16_t it = 0; it < dim; it++) { FIELD_VAR(type, name[it]) }
+    for (it = 0; it < dim; it++) { FIELD_VAR(type, name[it]) }
   /* FIELD_PTR_VAR serialization definition */
   #define FIELD_PTR_VAR(type, name) \
-    for (int8_t offset = (int8_t)sizeof(type) - 8; offset >= 0; offset -= 8) \
+    for (offset = (int8_t)sizeof(type) * 8 - 8; offset >= 0; offset -= 8) \
       _pl[idx++] = *(_data->name) >> offset;
   /* FIELD_PTR_ARRAY into FIELD_PTR_VAR macro, iterating over the array */
   #define FIELD_PTR_ARRAY(type, name, dim) \
-    for (uint16_t it = 0; it < dim; it++) { FIELD_PTR_VAR(type, name + it) }
+    for (it = 0; it < dim; it++) { FIELD_PTR_VAR(type, name + it) }
   /* for FIELD_STRING_STD iterate over characters (no need to marshalling) */
   #define FIELD_STRING_STD(name, dim) \
-    for (uint16_t it = 0; it < dim && _data->name[it] != '\0'; it++) \
+    for (it = 0; it < dim && _data->name[it] != '\0'; it++) \
       _pl[idx++] = _data->name[it];
   /* FIELD_STRING_PTR is a normal string, but without size check */
   #define FIELD_STRING_PTR(name) \
-    for (uint16_t it = 0; _data->name[it] != '\0'; it++) \
+    for (it = 0; _data->name[it] != '\0'; it++) \
       _pl[idx++] = _data->name[it];
   /* substitution */
   XPACKET_STRUCT
@@ -242,32 +245,34 @@ xpacket_serialize(uint8_t* _pl, const struct XPACKET_NAME* _data) {
  * \param _data  Pointer to the structure where values will be saved.
  * \return       Number of bytes deserialized.
  */
-inline uint16_t
+uint16_t
 xpacket_deserialize(const uint8_t* _pl, struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
+  int8_t offset = 0; /* offset for bit shifting */
+  uint16_t it = 0; /* index for array iteration */
   /* FIELD_VAR deserialization definition */
   #define FIELD_VAR(type, name) \
     _data->name = 0; /* set value to zero for next bitwise OR operations */ \
-    for (int8_t offset = (int8_t)sizeof(type) - 8; offset >= 0; offset -= 8) \
+    for (offset = (int8_t)sizeof(type) * 8 - 8; offset >= 0; offset -= 8) \
       _data->name |= (type)_pl[idx++] << offset;
   /* "convert" FIELD_ARRAY in a FIELD_VAR macro, iterating over the array */
   #define FIELD_ARRAY(type, name, dim) \
-    for (uint16_t it = 0; it < dim; it++) { FIELD_VAR(type, name[it]) }
+    for (it = 0; it < dim; it++) { FIELD_VAR(type, name[it]) }
   /* FIELD_PTR_VAR deserialization definition */
   #define FIELD_PTR_VAR(type, name) \
     *(_data->name) = 0; /* set value to zero for next bitwise OR operations */ \
-    for (int8_t offset = (int8_t)sizeof(type) - 8; offset >= 0; offset -= 8) \
+    for (offset = (int8_t)sizeof(type) * 8 - 8; offset >= 0; offset -= 8) \
       *(_data->name) |= (type)_pl[idx++] << offset;
   /* "convert" FIELD_ARRAY in a FIELD_VAR macro, iterating over the array */
   #define FIELD_PTR_ARRAY(type, name, dim) \
-    for (uint16_t it = 0; it < dim; it++) { FIELD_PTR_VAR(type, name + it) }
+    for (it = 0; it < dim; it++) { FIELD_PTR_VAR(type, name + it) }
   /* for FIELD_STRING_STD iterate over characters (no need to marshalling) */
   #define FIELD_STRING_STD(name, dim) \
-    for (uint16_t it = 0; it < dim && (char)_pl[idx] != '\0'; it++) \
+    for (it = 0; it < dim && (char)_pl[idx] != '\0'; it++) \
       _data->name[it] = (char)_pl[idx++];
   /* FIELD_STRING_PTR is a normal string, but without size check */
   #define FIELD_STRING_PTR(name) \
-    for (uint16_t it = 0; (char)_pl[idx] != '\0'; it++) \
+    for (it = 0; (char)_pl[idx] != '\0'; it++) \
       _data->name[it] = (char)_pl[idx++];
   /* substitution */
   XPACKET_STRUCT
