@@ -30,6 +30,7 @@
  * \todo Signed type marshalling.
  * \todo Graceful error handling.
  * \todo Enable/disable inline attribute.
+ * \todo Enable/disable c++ overloading for functions.
  * \bug Received string length.
  *
  *    XPacket is an utility that generates a C struct and two functions
@@ -75,12 +76,11 @@
  *      uint8_t b[32];
  *      uint32_t* c;
  *    };
- *    uint16_t xpacket_serialize(uint8_t*, const struct msg*);
- *    uint16_t xpacket_deserialize(const uint8_t*, struct msg*);
+ *    uint16_t serialize_msg(uint8_t*, const struct msg*);
+ *    uint16_t deserialize_msg(const uint8_t*, struct msg*);
  *    \endcode
  *
  *    A decent compiler is necessary for optimize (roll/unroll) the loops.
- *    Currently the functions are inline.
  *    Attributes (such as __attribute__((__packed__))) can be assigned to
  *    the structure by simply adding them before include xpacket.h.
  *
@@ -187,8 +187,10 @@ struct XPACKET_NAME {
   #undef FIELD_STRING_PTR
 };
 /* function declaration */
-uint16_t xpacket_serialize(uint8_t*, const struct XPACKET_NAME*);
-uint16_t xpacket_deserialize(const uint8_t*, struct XPACKET_NAME*);
+#define METHOD(prefix, name) METHOD_AUX(prefix, name)
+#define METHOD_AUX(prefix, name) prefix##name
+uint16_t METHOD(serialize_, XPACKET_NAME)(uint8_t*, const struct XPACKET_NAME*);
+uint16_t METHOD(deserialize_, XPACKET_NAME)(const uint8_t*, struct XPACKET_NAME*);
 /* function definition enabled only by the apposite macro */
 #ifdef XPACKET_C
 /*---------------------------------------------------------------------------*/
@@ -198,8 +200,8 @@ uint16_t xpacket_deserialize(const uint8_t*, struct XPACKET_NAME*);
  * \param _data  Pointer to the structure that will be serialized.
  * \return       Number of bytes serialized.
  */
-uint16_t
-xpacket_serialize(uint8_t* _pl, const struct XPACKET_NAME* _data) {
+uint16_t METHOD(serialize_, XPACKET_NAME)
+    (uint8_t* _pl, const struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
   /* other variables declaration (if needed) */
   #define FIELD_VAR(type, name)             DECL_OFFSET ||
@@ -268,8 +270,8 @@ xpacket_serialize(uint8_t* _pl, const struct XPACKET_NAME* _data) {
  * \param _data  Pointer to the structure where values will be saved.
  * \return       Number of bytes deserialized.
  */
-uint16_t
-xpacket_deserialize(const uint8_t* _pl, struct XPACKET_NAME* _data) {
+uint16_t METHOD(deserialize_, XPACKET_NAME)
+    (const uint8_t* _pl, struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
   /* other variables declaration (if needed) */
   #define FIELD_VAR(type, name)             DECL_OFFSET ||
@@ -336,6 +338,8 @@ xpacket_deserialize(const uint8_t* _pl, struct XPACKET_NAME* _data) {
 /*---------------------------------------------------------------------------*/
 /* end of file */
 #endif /* XPACKET_C */
+#undef METHOD
+#undef METHOD_AUX
 #endif /* XPACKET_BAD_FORMAT (struct format check) */
 /* undefine overloading macros */
 #undef FIELD
