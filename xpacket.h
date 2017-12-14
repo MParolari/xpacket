@@ -106,7 +106,8 @@
   FIELD_STRING(str, 32) \
   FIELD_STRING(opt_str) \
   FIELD_PTR(uint8_t, p_seqn) \
-  FIELD_PTR(uint32_t, long_arr, 8)
+  FIELD_PTR(uint32_t, long_arr, 8) \
+  FIELD_CUSTOM(linkaddr_t, source, copyto, copyfrom)
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -149,6 +150,8 @@
   !(TRUE##name) && XPACKET_TYPE_##type && (dim > 0) &&
 #define FIELD_STRING_STD(name, dim) !(TRUE##name) && (dim > 0) &&
 #define FIELD_STRING_PTR(name) !(TRUE##name) &&
+#define FIELD_CUSTOM(type, name, ser, de) \
+  !(TRUE##type) && !(TRUE##name) && !(TRUE##ser) &&!(TRUE##de) &&
 /* substitution and evaluation (an undefined macro is considered 0) */
 #if !(XPACKET_STRUCT 1)
 /* define a macro (see later) and report the error */
@@ -163,6 +166,7 @@
 #undef FIELD_PTR_ARRAY
 #undef FIELD_STRING_STD
 #undef FIELD_STRING_PTR
+#undef FIELD_CUSTOM
 #undef TRUE
 #undef XPACKET_TYPE_uint8_t
 #undef XPACKET_TYPE_uint16_t
@@ -178,6 +182,7 @@ struct XPACKET_NAME {
   #define FIELD_PTR_ARRAY(type, name, dim)  type* name;
   #define FIELD_STRING_STD(name, dim)       char name[dim];
   #define FIELD_STRING_PTR(name)            char* name;
+  #define FIELD_CUSTOM(type, name, ser, de) type name;
   XPACKET_STRUCT
   #undef FIELD_VAR
   #undef FIELD_ARRAY
@@ -185,6 +190,7 @@ struct XPACKET_NAME {
   #undef FIELD_PTR_ARRAY
   #undef FIELD_STRING_STD
   #undef FIELD_STRING_PTR
+  #undef FIELD_CUSTOM
 };
 /* function declaration */
 #define METHOD(prefix, name) METHOD_AUX(prefix, name)
@@ -210,6 +216,7 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #define FIELD_PTR_ARRAY(type, name, dim)  DECL_OFFSET || DECL_IT ||
   #define FIELD_STRING_STD(name, dim)       DECL_IT ||
   #define FIELD_STRING_PTR(name)            DECL_IT ||
+  #define FIELD_CUSTOM(type, name, ser, de)
   /* offset variable */
   #define DECL_OFFSET 1
   #if (XPACKET_STRUCT 0)
@@ -229,6 +236,7 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #undef FIELD_PTR_ARRAY
   #undef FIELD_STRING_STD
   #undef FIELD_STRING_PTR
+  #undef FIELD_CUSTOM
   /* FIELD_VAR serialization definition */
   #define FIELD_VAR(type, name) \
     for (offset = (int8_t)sizeof(type) * 8 - 8; offset >= 0; offset -= 8) \
@@ -251,6 +259,8 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #define FIELD_STRING_PTR(name) \
     for (it = 0; _data->name[it] != '\0'; it++) \
       _pl[idx++] = _data->name[it];
+  /* for FIELD_CUSTOM call the external function */
+  #define FIELD_CUSTOM(type, name, ser, de) ser(_pl + idx, &_data->name, &idx);
   /* substitution */
   XPACKET_STRUCT
   /* undefine temporary macros */
@@ -260,6 +270,7 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #undef FIELD_PTR_ARRAY
   #undef FIELD_STRING_STD
   #undef FIELD_STRING_PTR
+  #undef FIELD_CUSTOM
   /* return the number of bytes serialized */
   return idx;
 }
@@ -280,6 +291,7 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #define FIELD_PTR_ARRAY(type, name, dim)  DECL_OFFSET || DECL_IT ||
   #define FIELD_STRING_STD(name, dim)       DECL_IT ||
   #define FIELD_STRING_PTR(name)            DECL_IT ||
+  #define FIELD_CUSTOM(type, name, ser, de)
   /* offset variable */
   #define DECL_OFFSET 1
   #if (XPACKET_STRUCT 0)
@@ -299,6 +311,7 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #undef FIELD_PTR_ARRAY
   #undef FIELD_STRING_STD
   #undef FIELD_STRING_PTR
+  #undef FIELD_CUSTOM
   /* FIELD_VAR deserialization definition */
   #define FIELD_VAR(type, name) \
     _data->name = 0; /* set value to zero for next bitwise OR operations */ \
@@ -323,6 +336,8 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #define FIELD_STRING_PTR(name) \
     for (it = 0; (char)_pl[idx] != '\0'; it++) \
       _data->name[it] = (char)_pl[idx++];
+  /* for FIELD_CUSTOM call the external function */
+  #define FIELD_CUSTOM(type, name, ser, de) de(_pl + idx, &_data->name, &idx);
   /* substitution */
   XPACKET_STRUCT
   /* undefine temporary macros */
@@ -332,6 +347,7 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #undef FIELD_PTR_ARRAY
   #undef FIELD_STRING_STD
   #undef FIELD_STRING_PTR
+  #undef FIELD_CUSTOM
   /* return the number of bytes serialized */
   return idx;
 }
