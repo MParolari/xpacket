@@ -1,6 +1,6 @@
 /*
  * XPacket
- * Copyright (C) 2017 Matteo Parolari <mparolari.dev@gmail.com>
+ * Copyright (C) 2017-18 Matteo Parolari <mparolari.dev@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -21,8 +21,8 @@
  * \brief Main header of XPacket.
  * \author Matteo Parolari <mparolari.dev@gmail.com>
  * \copyright GNU Lesser General Public License version 3.
- * \version 0.2a
- * \date 10/2017
+ * \version 0.3
+ * \date 02/2018
  * \warning Macro conflicts are possible.
  * \warning If more arguments are used than needed, behavior is undefined.
  * \todo Add an automatic delimiter (like '\0') to the arrays
@@ -46,8 +46,8 @@
  *    Different types of field are supported:
  *    * FIELD(type, name, [dim]): a simple variable,
  *      or an array if "dim" argument is given.
- *    * FIELD_PTR(type, name, [dim]): a pointer to a variable; if "dim" is
- *      given, it will be considered the first position of an array.
+ *    * FIELD_PTR(type, name, [dim]): a pointer to a variable;
+ *      or a pointer to an array if "dim" argument is given.
  *
  *    Only unsigned types are currently supported: uint8_t, uint16_t, uint32_t
  *    from stdint.h header, that are supposed to have fixed size (operator
@@ -81,6 +81,11 @@
  *    in this way struct and functions declaration can be easily separeted
  *    in an header, while the definitions are placed in a C file.
  *
+ *    If the XPACKET_OVERLOADING macro is defined, the functions will be
+ *    simply called "serialize" and "deserialize"; while this may generate
+ *    name conflicts in the C language, in C++ overloading can solve the
+ *    possible ambiguity.
+ *
  *    The macros can be safely undefined after the header inclusion;
  *    it's a common practice redefine their values for include the xpacket
  *    header again, in order to generate another different structure
@@ -89,17 +94,6 @@
  *    In alternative, the preprocessor can usually run as standalone
  *    (option -E with gcc) and generate the C code only once.
  */
-
-#ifdef TEST
-#define XPACKET_NAME msg
-#define XPACKET_STRUCT \
-  FIELD(uint16_t, seqn) \
-  FIELD(uint8_t, hops) \
-  FIELD(uint8_t, arr, 8) \
-  FIELD_PTR(uint8_t, p_seqn) \
-  FIELD_PTR(uint32_t, long_arr, 8) \
-  FIELD_CUSTOM(linkaddr_t, source, copyto, copyfrom)
-#endif
 
 /*---------------------------------------------------------------------------*/
 /* check if XPACKET_NAME and XPACKET_STRUCT are defined */
@@ -110,7 +104,7 @@
 #else /* endif is at the end of the file */
 /*---------------------------------------------------------------------------*/
 /* define overloading for macros (valid until the end of the file) */
-/*TODO check/stop if there are more arguments than needed */
+/* TODO check/stop if there are more arguments than needed */
 #define OVERLOAD_FIELD(_1, _2, _3, name, ...) name
 #define FIELD(...) \
   OVERLOAD_FIELD(__VA_ARGS__, FIELD_ARRAY, FIELD_VAR, FIELD_ERROR)(__VA_ARGS__)
