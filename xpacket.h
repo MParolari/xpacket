@@ -30,7 +30,6 @@
  * \todo Signed type marshalling.
  * \todo Graceful error handling.
  * \todo Enable/disable inline attribute.
- * \todo Enable/disable c++ overloading for functions.
  *
  *    XPacket is an utility that generates a C struct and two functions
  *    for serialize/deserialize it into/from a given payload.
@@ -172,11 +171,16 @@ struct XPACKET_NAME {
   #undef FIELD_PTR_ARRAY
   #undef FIELD_CUSTOM
 };
-/* function declaration */
+/* function naming */
+#ifndef XPACKET_OVERLOADING
 #define METHOD(prefix, name) METHOD_AUX(prefix, name)
-#define METHOD_AUX(prefix, name) prefix##name
-uint16_t METHOD(serialize_, XPACKET_NAME)(uint8_t*, const struct XPACKET_NAME*);
-uint16_t METHOD(deserialize_, XPACKET_NAME)(const uint8_t*, struct XPACKET_NAME*);
+#define METHOD_AUX(prefix, name) prefix##_##name
+#else
+#define METHOD(prefix, name) prefix
+#endif
+/* function declaration */
+uint16_t METHOD(serialize, XPACKET_NAME)(uint8_t*, const struct XPACKET_NAME*);
+uint16_t METHOD(deserialize, XPACKET_NAME)(const uint8_t*, struct XPACKET_NAME*);
 /* function definition enabled only by the apposite macro */
 #ifdef XPACKET_C
 /*---------------------------------------------------------------------------*/
@@ -186,7 +190,7 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)(const uint8_t*, struct XPACKET_NAME*
  * \param _data  Pointer to the structure that will be serialized.
  * \return       Number of bytes serialized.
  */
-uint16_t METHOD(serialize_, XPACKET_NAME)
+uint16_t METHOD(serialize, XPACKET_NAME)
     (uint8_t* _pl, const struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
   /* other variables declaration (if needed) */
@@ -247,7 +251,7 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
  * \param _data  Pointer to the structure where values will be saved.
  * \return       Number of bytes deserialized.
  */
-uint16_t METHOD(deserialize_, XPACKET_NAME)
+uint16_t METHOD(deserialize, XPACKET_NAME)
     (const uint8_t* _pl, struct XPACKET_NAME* _data) {
   uint16_t idx = 0; /* index */
   /* other variables declaration (if needed) */
