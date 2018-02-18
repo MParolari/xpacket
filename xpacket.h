@@ -25,13 +25,12 @@
  * \date 10/2017
  * \warning Macro conflicts are possible.
  * \warning If more arguments are used than needed, behavior is undefined.
- * \todo Optimize string copy (memcpy?).
+ * \todo Add an automatic delimiter (like '\0') to the arrays
  * \todo Check number of arguments in overloading macro.
  * \todo Signed type marshalling.
  * \todo Graceful error handling.
  * \todo Enable/disable inline attribute.
  * \todo Enable/disable c++ overloading for functions.
- * \bug Received string length.
  *
  *    XPacket is an utility that generates a C struct and two functions
  *    for serialize/deserialize it into/from a given payload.
@@ -50,11 +49,6 @@
  *      or an array if "dim" argument is given.
  *    * FIELD_PTR(type, name, [dim]): a pointer to a variable; if "dim" is
  *      given, it will be considered the first position of an array.
- *    * FIELD_STRING(name, [dim]): a char string, if "dim" is specified,
- *      the char array is allocated inside the struct, otherwise only a
- *      pointer will be declared instead; this type of field is like a common
- *      char array, but it's optimized for sending only the characters
- *      before the first '\0'.
  *
  *    Only unsigned types are currently supported: uint8_t, uint16_t, uint32_t
  *    from stdint.h header, that are supposed to have fixed size (operator
@@ -103,8 +97,6 @@
   FIELD(uint16_t, seqn) \
   FIELD(uint8_t, hops) \
   FIELD(uint8_t, arr, 8) \
-  FIELD_STRING(str, 32) \
-  FIELD_STRING(opt_str) \
   FIELD_PTR(uint8_t, p_seqn) \
   FIELD_PTR(uint32_t, long_arr, 8) \
   FIELD_CUSTOM(linkaddr_t, source, copyto, copyfrom)
@@ -127,10 +119,6 @@
 #define FIELD_PTR(...) \
   OVERLOAD_FIELD_PTR(__VA_ARGS__, \
     FIELD_PTR_ARRAY, FIELD_PTR_VAR, FIELD_ERROR)(__VA_ARGS__)
-#define OVERLOAD_FIELD_STRING(_0, _1, _2, name, ...) name
-#define FIELD_STRING(...) \
-  OVERLOAD_FIELD_STRING(_0, ##__VA_ARGS__, \
-    FIELD_STRING_STD, FIELD_STRING_PTR, FIELD_ERROR)(__VA_ARGS__)
 /*---------------------------------------------------------------------------*/
 /* check if fields are well formed */
 /* supported types must be set to 1 */
@@ -148,8 +136,6 @@
 #define FIELD_PTR_VAR(type, name) !(TRUE##name) && XPACKET_TYPE_##type &&
 #define FIELD_PTR_ARRAY(type, name, dim) \
   !(TRUE##name) && XPACKET_TYPE_##type && (dim > 0) &&
-#define FIELD_STRING_STD(name, dim) !(TRUE##name) && (dim > 0) &&
-#define FIELD_STRING_PTR(name) !(TRUE##name) &&
 #define FIELD_CUSTOM(type, name, ser, de) \
   !(TRUE##type) && !(TRUE##name) && !(TRUE##ser) &&!(TRUE##de) &&
 /* substitution and evaluation (an undefined macro is considered 0) */
@@ -164,8 +150,6 @@
 #undef FIELD_ARRAY
 #undef FIELD_PTR_VAR
 #undef FIELD_PTR_ARRAY
-#undef FIELD_STRING_STD
-#undef FIELD_STRING_PTR
 #undef FIELD_CUSTOM
 #undef TRUE
 #undef XPACKET_TYPE_uint8_t
@@ -180,16 +164,12 @@ struct XPACKET_NAME {
   #define FIELD_ARRAY(type, name, dim)      type name[dim];
   #define FIELD_PTR_VAR(type, name)         type* name;
   #define FIELD_PTR_ARRAY(type, name, dim)  type* name;
-  #define FIELD_STRING_STD(name, dim)       char name[dim];
-  #define FIELD_STRING_PTR(name)            char* name;
   #define FIELD_CUSTOM(type, name, ser, de) type name;
   XPACKET_STRUCT
   #undef FIELD_VAR
   #undef FIELD_ARRAY
   #undef FIELD_PTR_VAR
   #undef FIELD_PTR_ARRAY
-  #undef FIELD_STRING_STD
-  #undef FIELD_STRING_PTR
   #undef FIELD_CUSTOM
 };
 /* function declaration */
@@ -214,8 +194,6 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #define FIELD_ARRAY(type, name, dim)      DECL_OFFSET || DECL_IT ||
   #define FIELD_PTR_VAR(type, name)         DECL_OFFSET ||
   #define FIELD_PTR_ARRAY(type, name, dim)  DECL_OFFSET || DECL_IT ||
-  #define FIELD_STRING_STD(name, dim)       DECL_IT ||
-  #define FIELD_STRING_PTR(name)            DECL_IT ||
   #define FIELD_CUSTOM(type, name, ser, de)
   /* offset variable */
   #define DECL_OFFSET 1
@@ -234,8 +212,6 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #undef FIELD_ARRAY
   #undef FIELD_PTR_VAR
   #undef FIELD_PTR_ARRAY
-  #undef FIELD_STRING_STD
-  #undef FIELD_STRING_PTR
   #undef FIELD_CUSTOM
   /* FIELD_VAR serialization definition */
   #define FIELD_VAR(type, name) \
@@ -251,14 +227,6 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   /* FIELD_PTR_ARRAY into FIELD_PTR_VAR macro, iterating over the array */
   #define FIELD_PTR_ARRAY(type, name, dim) \
     for (it = 0; it < dim; it++) { FIELD_PTR_VAR(type, name + it) }
-  /* for FIELD_STRING_STD iterate over characters (no need to marshalling) */
-  #define FIELD_STRING_STD(name, dim) \
-    for (it = 0; it < dim && _data->name[it] != '\0'; it++) \
-      _pl[idx++] = _data->name[it];
-  /* FIELD_STRING_PTR is a normal string, but without size check */
-  #define FIELD_STRING_PTR(name) \
-    for (it = 0; _data->name[it] != '\0'; it++) \
-      _pl[idx++] = _data->name[it];
   /* for FIELD_CUSTOM call the external function */
   #define FIELD_CUSTOM(type, name, ser, de) ser(_pl + idx, &_data->name, &idx);
   /* substitution */
@@ -268,8 +236,6 @@ uint16_t METHOD(serialize_, XPACKET_NAME)
   #undef FIELD_ARRAY
   #undef FIELD_PTR_VAR
   #undef FIELD_PTR_ARRAY
-  #undef FIELD_STRING_STD
-  #undef FIELD_STRING_PTR
   #undef FIELD_CUSTOM
   /* return the number of bytes serialized */
   return idx;
@@ -289,8 +255,6 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #define FIELD_ARRAY(type, name, dim)      DECL_OFFSET || DECL_IT ||
   #define FIELD_PTR_VAR(type, name)         DECL_OFFSET ||
   #define FIELD_PTR_ARRAY(type, name, dim)  DECL_OFFSET || DECL_IT ||
-  #define FIELD_STRING_STD(name, dim)       DECL_IT ||
-  #define FIELD_STRING_PTR(name)            DECL_IT ||
   #define FIELD_CUSTOM(type, name, ser, de)
   /* offset variable */
   #define DECL_OFFSET 1
@@ -309,8 +273,6 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #undef FIELD_ARRAY
   #undef FIELD_PTR_VAR
   #undef FIELD_PTR_ARRAY
-  #undef FIELD_STRING_STD
-  #undef FIELD_STRING_PTR
   #undef FIELD_CUSTOM
   /* FIELD_VAR deserialization definition */
   #define FIELD_VAR(type, name) \
@@ -328,14 +290,6 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   /* "convert" FIELD_ARRAY in a FIELD_VAR macro, iterating over the array */
   #define FIELD_PTR_ARRAY(type, name, dim) \
     for (it = 0; it < dim; it++) { FIELD_PTR_VAR(type, name + it) }
-  /* for FIELD_STRING_STD iterate over characters (no need to marshalling) */
-  #define FIELD_STRING_STD(name, dim) \
-    for (it = 0; it < dim && (char)_pl[idx] != '\0'; it++) \
-      _data->name[it] = (char)_pl[idx++];
-  /* FIELD_STRING_PTR is a normal string, but without size check */
-  #define FIELD_STRING_PTR(name) \
-    for (it = 0; (char)_pl[idx] != '\0'; it++) \
-      _data->name[it] = (char)_pl[idx++];
   /* for FIELD_CUSTOM call the external function */
   #define FIELD_CUSTOM(type, name, ser, de) de(_pl + idx, &_data->name, &idx);
   /* substitution */
@@ -345,8 +299,6 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
   #undef FIELD_ARRAY
   #undef FIELD_PTR_VAR
   #undef FIELD_PTR_ARRAY
-  #undef FIELD_STRING_STD
-  #undef FIELD_STRING_PTR
   #undef FIELD_CUSTOM
   /* return the number of bytes serialized */
   return idx;
@@ -360,8 +312,6 @@ uint16_t METHOD(deserialize_, XPACKET_NAME)
 /* undefine overloading macros */
 #undef FIELD
 #undef FIELD_PTR
-#undef FIELD_STRING
 #undef OVERLOAD_FIELD
 #undef OVERLOAD_FIELD_PTR
-#undef OVERLOAD_FIELD_STRING
 #endif /* XPACKET_NAME and XPACKET_STRUCT definition check */
